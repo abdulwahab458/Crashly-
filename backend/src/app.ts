@@ -1,6 +1,8 @@
 import Fastify from "fastify";
 import type { ErrorEvent } from "./types.js";
-import { isValidApiKey } from "./auth.js";
+import { authenticateApiKey} from "./auth.js";
+import { prisma } from "./utils/db.js";
+
 
 export function buildApp() {
     const app = Fastify({
@@ -33,12 +35,29 @@ export function buildApp() {
         async (request, reply) => {
             const apiKey = request.headers["x-api-key"];
 
-            if (!isValidApiKey(apiKey)) {
+            if (typeof apiKey !== "string") {
                 return reply.code(401).send({
-                    status: "unauthorized"
+                    error: "Unauthorized"
+                });
+            }
+
+            const project = await authenticateApiKey(apiKey);
+
+            if (!project) {
+                return reply.code(401).send({
+                    error: "Unauthorized"
                 });
             }
             const event = request.body;
+            const eventObject = await prisma.errorEvent.create({
+                data:{
+                    message:event.message,
+                    name:event.name,
+                    stack:event.stack,
+                    timestamp:event.timestamp,
+                    projectId:project.id
+                }
+            })
 
             console.log("Received error event:", event);
 
@@ -47,6 +66,37 @@ export function buildApp() {
             });
         }
     );
+
+    app.get("/api/events", async (request, reply) => {
+    const apiKey = request.headers["x-api-key"];
+
+    if (typeof apiKey !== "string") {
+        return reply.status(401).send({
+            error: "Unauthorized"
+        });
+    }
+
+    const project = await authenticateApiKey(apiKey);
+
+    if (!project) {
+        return reply.status(401).send({
+            error: "Unauthorized"
+        });
+    }
+
+    const events = await prisma.errorEvent.findMany({
+        where: {
+            projectId: project.id
+        },
+        orderBy: {
+            timestamp: "desc"
+        }
+    });
+
+    return reply.status(200).send({
+        events
+    });
+});
 
     return app;
 }

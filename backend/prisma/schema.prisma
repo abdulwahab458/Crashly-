@@ -24,12 +24,14 @@ model Project {
 
 model ApiKey {
   id        String   @id @default(uuid())
+  keyPrefix String   @unique
   keyHash   String   @unique
   projectId String
   createdAt DateTime @default(now())
 
-  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  project   Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
 
+  @@index([keyPrefix])
   @@index([projectId])
 }
 

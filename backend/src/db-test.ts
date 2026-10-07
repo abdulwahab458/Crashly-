@@ -1,15 +1,18 @@
 import { prisma } from "./utils/db";
 
+async function main(){
 
-async function main() {
-  const apiKeys = await prisma.apiKey.findMany({
-  include: {
-    project: true
-  }
-});
-
-  console.log(apiKeys);
-
+  const events = await prisma.errorEvent.findMany({
+    include: {
+      project: true
+    },
+    orderBy: {
+      createdAt: "desc"
+    }
+  });
+  
+  console.log(events);
+  
   await prisma.$disconnect();
 }
 

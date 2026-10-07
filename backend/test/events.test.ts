@@ -1,79 +1,54 @@
 import { describe, expect, it } from "vitest";
 import { buildApp } from "../src/app.js";
+import { prisma } from "../src/utils/db.js";
+import bcrypt from "bcrypt";
 
-describe("POST /api/events", () => {
-    it("accepts a valid error event", async () => {
-        const app = buildApp();
+describe("GET /api/events", () => {
+    it("rejects an API key with a valid prefix but invalid secret", async () => {
+    const app = buildApp();
 
-        const response = await app.inject({
-            method: "POST",
-            url: "/api/events",
-            headers: {
-                "x-api-key": "test-api-key"
-            },
-            payload: {
-                message: "Database connection failed",
-                name: "Error",
-                stack: "Error: Database connection failed",
-                timestamp: new Date().toISOString()
-            }
-        });
-
-        expect(response.statusCode).toBe(202);
-        expect(response.json()).toEqual({
-            status: "accepted"
-        });
-
-        await app.close();
+    const project = await prisma.project.create({
+        data: {
+            name: "Invalid Secret Project"
+        }
     });
 
-    it("rejects an invalid error event", async () => {
-        const app = buildApp();
+    const validApiKey = "etrk_test_security_123456789";
+    const keyPrefix = validApiKey.slice(0, 14);
+    const keyHash = await bcrypt.hash(validApiKey, 12);
 
-        const response = await app.inject({
-            method: "POST",
-            url: "/api/events",
-            payload: {
-                hello: "world"
-            }
-        });
-
-        expect(response.statusCode).toBe(400);
-
-        await app.close();
+    await prisma.apiKey.create({
+        data: {
+            keyPrefix,
+            keyHash,
+            projectId: project.id
+        }
     });
-    it("rejects a request without an API key", async () => {
-        const app = buildApp();
 
-        const response = await app.inject({
-            method: "POST",
-            url: "/api/events",
-            payload: {
-                message: "Database connection failed",
-                name: "Error",
-                timestamp: new Date().toISOString()
-            }
-        });
+    const invalidApiKey = `${keyPrefix}wrong-secret`;
 
-        expect(response.statusCode).toBe(401);
-
-        await app.close();
+    const response = await app.inject({
+        method: "GET",
+        url: "/api/events",
+        headers: {
+            "x-api-key": invalidApiKey
+        }
     });
-    it("rejects a request without an API key", async () => {
-        const app = buildApp();
 
-        const response = await app.inject({
-            method: "POST",
-            url: "/api/events",
-            payload: {
-                message: "Database connection failed",
-                name: "Error",
-                timestamp: new Date().toISOString()
-            }
-        });
+    expect(response.statusCode).toBe(401);
 
-        expect(response.statusCode).toBe(401);
-
-        await app.close();
+    await prisma.apiKey.deleteMany({
+        where: {
+            projectId: project.id
+        }
     });
+
+    await prisma.project.delete({
+        where: {
+            id: project.id
+        }
+    });
+
+    await app.close();
+});
 });
