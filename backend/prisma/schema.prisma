@@ -18,8 +18,9 @@ model Project {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  apiKeys ApiKey[]
-  events  ErrorEvent[]
+  apiKeys     ApiKey[]
+  events      ErrorEvent[]
+  errorGroups ErrorGroup[]
 }
 
 model ApiKey {
@@ -29,7 +30,7 @@ model ApiKey {
   projectId String
   createdAt DateTime @default(now())
 
-  project   Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
 
   @@index([keyPrefix])
   @@index([projectId])
@@ -45,7 +46,25 @@ model ErrorEvent {
   projectId String
   project   Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
 
-  createdAt DateTime @default(now())
+  groupId   String
+  group     ErrorGroup @relation(fields: [groupId], references: [id])
+  createdAt DateTime   @default(now())
 
   @@index([projectId, timestamp])
+}
+
+model ErrorGroup {
+  id          String   @id @default(uuid())
+  fingerprint String   @unique
+  message     String
+  name        String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  projectId String
+  project   Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  events ErrorEvent[]
+
+  @@index([projectId])
 }

@@ -1,8 +1,8 @@
 import Fastify from "fastify";
 import type { ErrorEvent } from "./types.js";
-import { authenticateApiKey} from "./auth.js";
+import { authenticateApiKey } from "./auth.js";
 import { prisma } from "./utils/db.js";
-
+import { generateFingerprint } from "./utils/fingerprint.js";
 
 export function buildApp() {
     const app = Fastify({
@@ -48,16 +48,43 @@ export function buildApp() {
                     error: "Unauthorized"
                 });
             }
+
             const event = request.body;
-            const eventObject = await prisma.errorEvent.create({
-                data:{
-                    message:event.message,
-                    name:event.name,
-                    stack:event.stack,
-                    timestamp:event.timestamp,
-                    projectId:project.id
+
+            const fingerprint = generateFingerprint(
+                project.id,
+                event.name,
+                event.message,
+                event.stack
+            );
+
+            let group = await prisma.errorGroup.findUnique({
+                where: {
+                    fingerprint
                 }
-            })
+            });
+
+            if (!group) {
+                group = await prisma.errorGroup.create({
+                    data: {
+                        fingerprint,
+                        message: event.message,
+                        name: event.name,
+                        projectId: project.id
+                    }
+                });
+            }
+
+            await prisma.errorEvent.create({
+                data: {
+                    message: event.message,
+                    name: event.name,
+                    stack: event.stack,
+                    timestamp: event.timestamp,
+                    projectId: project.id,
+                    groupId: group.id
+                }
+            });
 
             console.log("Received error event:", event);
 
@@ -68,35 +95,35 @@ export function buildApp() {
     );
 
     app.get("/api/events", async (request, reply) => {
-    const apiKey = request.headers["x-api-key"];
+        const apiKey = request.headers["x-api-key"];
 
-    if (typeof apiKey !== "string") {
-        return reply.status(401).send({
-            error: "Unauthorized"
-        });
-    }
-
-    const project = await authenticateApiKey(apiKey);
-
-    if (!project) {
-        return reply.status(401).send({
-            error: "Unauthorized"
-        });
-    }
-
-    const events = await prisma.errorEvent.findMany({
-        where: {
-            projectId: project.id
-        },
-        orderBy: {
-            timestamp: "desc"
+        if (typeof apiKey !== "string") {
+            return reply.status(401).send({
+                error: "Unauthorized"
+            });
         }
-    });
 
-    return reply.status(200).send({
-        events
+        const project = await authenticateApiKey(apiKey);
+
+        if (!project) {
+            return reply.status(401).send({
+                error: "Unauthorized"
+            });
+        }
+
+        const events = await prisma.errorEvent.findMany({
+            where: {
+                projectId: project.id
+            },
+            orderBy: {
+                timestamp: "desc"
+            }
+        });
+
+        return reply.status(200).send({
+            events
+        });
     });
-});
 
     return app;
 }
