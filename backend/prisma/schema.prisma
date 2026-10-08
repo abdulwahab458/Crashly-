@@ -54,12 +54,17 @@ model ErrorEvent {
 }
 
 model ErrorGroup {
-  id          String   @id @default(uuid())
-  fingerprint String   @unique
+  id          String @id @default(uuid())
+  fingerprint String @unique
   message     String
   name        String
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+
+  occurrenceCount Int      @default(0)
+  firstSeenAt     DateTime @default(now())
+  lastSeenAt      DateTime @default(now())
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   projectId String
   project   Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
