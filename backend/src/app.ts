@@ -189,8 +189,117 @@ export function buildApp() {
         });
     });
 
-    app.get<{ Params: { groupId: string } }>(
+
+
+    app.get<{
+        Params: { groupId: string };
+        Querystring: { page?: string; limit?: string };
+    }>(
         "/api/error-groups/:groupId",
+        async (request, reply) => {
+            const requestStart = performance.now();
+
+            const logTime = (label: string, start: number) => {
+                console.log(
+                    `[Error Group Detail] ${label}: ${(performance.now() - start).toFixed(0)}ms`
+                );
+            };
+
+            const apiKey = request.headers["x-api-key"];
+
+            if (typeof apiKey !== "string") {
+                return reply.status(401).send({
+                    error: "Unauthorized"
+                });
+            }
+
+            let stepStart = performance.now();
+
+            const project = await authenticateApiKey(apiKey);
+
+            logTime("Authentication", stepStart);
+
+            if (!project) {
+                return reply.status(401).send({
+                    error: "Unauthorized"
+                });
+            }
+
+            const { groupId } = request.params;
+
+            const pageValue = Number(request.query.page ?? 1);
+            const limitValue = Number(request.query.limit ?? 20);
+
+            const page = Number.isSafeInteger(pageValue) && pageValue > 0
+                ? pageValue
+                : 1;
+
+            const limit = Number.isSafeInteger(limitValue) && limitValue > 0
+                ? Math.min(limitValue, 100)
+                : 20;
+
+            const skip = (page - 1) * limit;
+
+            stepStart = performance.now();
+
+            const [group, total] = await Promise.all([
+                prisma.errorGroup.findFirst({
+                    where: {
+                        id: groupId,
+                        projectId: project.id
+                    },
+                    include: {
+                        events: {
+                            where: {
+                                projectId: project.id
+                            },
+                            orderBy: {
+                                timestamp: "desc"
+                            },
+                            skip,
+                            take: limit
+                        }
+                    }
+                }),
+
+                prisma.errorEvent.count({
+                    where: {
+                        groupId,
+                        projectId: project.id
+                    }
+                })
+            ]);
+
+            logTime("Group lookup + events query + count", stepStart);
+
+            if (!group) {
+                return reply.status(404).send({
+                    error: "Error group not found"
+                });
+            }
+
+            const { events, ...groupData } = group;
+
+            const response = reply.status(200).send({
+                group: groupData,
+                events,
+                pagination: {
+                    page,
+                    limit,
+                    total,
+                    totalPages: Math.ceil(total / limit)
+                }
+            });
+
+            logTime("Total route execution", requestStart);
+
+            return response;
+        }
+    );
+
+
+    app.get(
+        "/api/dashboard/summary",
         async (request, reply) => {
             const apiKey = request.headers["x-api-key"];
 
@@ -208,33 +317,131 @@ export function buildApp() {
                 });
             }
 
-            const { groupId } = request.params;
+            const since = new Date(Date.now() - 24 * 60 * 60 * 1000);
 
-            const group = await prisma.errorGroup.findFirst({
-                where: {
-                    id: groupId,
-                    projectId: project.id
-                },
-                include: {
-                    events: {
-                        orderBy: {
-                            timestamp: "desc"
+            const [
+                totalErrorGroups,
+                totalEvents,
+                errorsLast24Hours
+            ] = await Promise.all([
+                prisma.errorGroup.count({
+                    where: {
+                        projectId: project.id
+                    }
+                }),
+
+                prisma.errorEvent.count({
+                    where: {
+                        projectId: project.id
+                    }
+                }),
+
+                prisma.errorEvent.count({
+                    where: {
+                        projectId: project.id,
+                        timestamp: {
+                            gte: since
                         }
                     }
-                }
-            });
-
-            if (!group) {
-                return reply.status(404).send({
-                    error: "Error group not found"
-                });
-            }
+                })
+            ]);
 
             return reply.status(200).send({
-                group
+                totalErrorGroups,
+                totalEvents,
+                errorsLast24Hours
             });
         }
     );
+
+
+    app.get<{
+        Querystring: {
+            range?: string;
+        };
+    }>(
+        "/api/dashboard/trends",
+        async (request, reply) => {
+            const apiKey = request.headers["x-api-key"];
+
+            if (typeof apiKey !== "string") {
+                return reply.status(401).send({
+                    error: "Unauthorized"
+                });
+            }
+
+            const project = await authenticateApiKey(apiKey);
+
+            if (!project) {
+                return reply.status(401).send({
+                    error: "Unauthorized"
+                });
+            }
+
+            const range = request.query.range ?? "24h";
+
+            if (range !== "24h" && range !== "7d") {
+                return reply.status(400).send({
+                    error: "Invalid range. Use 24h or 7d."
+                });
+            }
+
+            const now = new Date();
+            const bucketSize = range === "24h"
+                ? 60 * 60 * 1000
+                : 24 * 60 * 60 * 1000;
+
+            const bucketCount = range === "24h" ? 24 : 7;
+            const startTime = new Date(
+                Math.floor(now.getTime() / bucketSize) * bucketSize
+                - (bucketCount - 1) * bucketSize
+            );
+
+            const events = await prisma.errorEvent.findMany({
+                where: {
+                    projectId: project.id,
+                    timestamp: {
+                        gte: startTime,
+                        lte: now
+                    }
+                },
+                select: {
+                    timestamp: true
+                }
+            });
+
+            const counts = new Map<number, number>();
+
+            for (const event of events) {
+                const bucket = Math.floor(
+                    event.timestamp.getTime() / bucketSize
+                ) * bucketSize;
+
+                counts.set(bucket, (counts.get(bucket) ?? 0) + 1);
+            }
+
+            const data = Array.from(
+                { length: bucketCount },
+                (_, index) => {
+                    const timestamp = startTime.getTime() + index * bucketSize;
+
+                    return {
+                        timestamp: new Date(timestamp).toISOString(),
+                        count: counts.get(timestamp) ?? 0
+                    };
+                }
+            );
+
+            return reply.status(200).send({
+                range,
+                data
+            });
+        }
+    );
+
+
+
+
 
 
 

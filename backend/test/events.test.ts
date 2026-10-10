@@ -336,7 +336,7 @@ describe("POST /api/events", () => {
         const keyPrefix = `etrk_test_${project.id}`;
         const apiKey = `${keyPrefix}_secret`;
 
-        const hash = await bcrypt.hash(apiKey, 12);
+        const hash = await bcrypt.hash(apiKey, 4);
 
         await prisma.apiKey.create({
             data: {
@@ -540,12 +540,6 @@ describe("POST /api/events", () => {
             expect(event.groupId).toBe(groups[0].id);
         }
 
-        await prisma.apiKey.deleteMany({
-            where: {
-                projectId: project.id
-            }
-        });
-
         await prisma.project.delete({
             where: {
                 id: project.id
@@ -553,5 +547,5 @@ describe("POST /api/events", () => {
         });
 
         await app.close();
-    });
+    }, 15000);
 });

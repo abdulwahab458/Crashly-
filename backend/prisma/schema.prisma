@@ -50,7 +50,7 @@ model ErrorEvent {
   group     ErrorGroup @relation(fields: [groupId], references: [id])
   createdAt DateTime   @default(now())
 
-  @@index([projectId, timestamp])
+  @@index([projectId, groupId, timestamp])
 }
 
 model ErrorGroup {
