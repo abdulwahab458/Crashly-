@@ -70,13 +70,15 @@ export function buildApp() {
                     projectId: project.id,
                     occurrenceCount: 1,
                     firstSeenAt: eventTimestamp,
-                    lastSeenAt: eventTimestamp
+                    lastSeenAt: eventTimestamp,
+                    status: "UNRESOLVED"
                 },
                 update: {
                     occurrenceCount: {
                         increment: 1
                     },
-                    lastSeenAt: eventTimestamp
+                    lastSeenAt: eventTimestamp,
+                    status: "UNRESOLVED",
                 }
             });
 
@@ -150,7 +152,10 @@ export function buildApp() {
         const query = request.query as {
             page?: string;
             limit?: string;
+            status?: string;
+            search?: string;
         };
+        const search = query.search?.trim();
 
         const page = Math.max(Number(query.page) || 1, 1);
         const limit = Math.min(
@@ -158,12 +163,44 @@ export function buildApp() {
             100
         );
 
+        const status = query.status;
+
+        if (
+            status !== undefined &&
+            status !== "UNRESOLVED" &&
+            status !== "RESOLVED"
+        ) {
+            return reply.status(400).send({
+                error: "Invalid status. Use UNRESOLVED or RESOLVED."
+            });
+        }
+
         const skip = (page - 1) * limit;
+
 
         const [groups, total] = await Promise.all([
             prisma.errorGroup.findMany({
                 where: {
-                    projectId: project.id
+                    projectId: project.id,
+                    ...(status ? { status } : {}),
+                    ...(search
+                        ? {
+                            OR: [
+                                {
+                                    name: {
+                                        contains: search,
+                                        mode: "insensitive"
+                                    }
+                                },
+                                {
+                                    message: {
+                                        contains: search,
+                                        mode: "insensitive"
+                                    }
+                                }
+                            ]
+                        }
+                        : {})
                 },
                 orderBy: {
                     occurrenceCount: "desc"
@@ -173,10 +210,30 @@ export function buildApp() {
             }),
             prisma.errorGroup.count({
                 where: {
-                    projectId: project.id
+                    projectId: project.id,
+                    ...(status ? { status } : {}),
+                    ...(search
+                        ? {
+                            OR: [
+                                {
+                                    name: {
+                                        contains: search,
+                                        mode: "insensitive"
+                                    }
+                                },
+                                {
+                                    message: {
+                                        contains: search,
+                                        mode: "insensitive"
+                                    }
+                                }
+                            ]
+                        }
+                        : {})
                 }
             })
         ]);
+
 
         return reply.status(200).send({
             groups,
@@ -438,6 +495,76 @@ export function buildApp() {
             });
         }
     );
+
+
+
+    app.patch<{
+        Params: { groupId: string };
+        Body: { status: "UNRESOLVED" | "RESOLVED" };
+    }>(
+        "/api/error-groups/:groupId/status",
+        async (request, reply) => {
+            const apiKey = request.headers["x-api-key"];
+
+            if (typeof apiKey !== "string") {
+                return reply.status(401).send({
+                    error: "Unauthorized"
+                });
+            }
+
+            const project = await authenticateApiKey(apiKey);
+
+            if (!project) {
+                return reply.status(401).send({
+                    error: "Unauthorized"
+                });
+            }
+
+            const { groupId } = request.params;
+            const { status } = request.body ?? {};
+
+            if (status !== "UNRESOLVED" && status !== "RESOLVED") {
+                return reply.status(400).send({
+                    error: "Invalid status. Use UNRESOLVED or RESOLVED."
+                });
+            }
+
+            const group = await prisma.errorGroup.findFirst({
+                where: {
+                    id: groupId,
+                    projectId: project.id
+                },
+                select: {
+                    id: true
+                }
+            });
+
+            if (!group) {
+                return reply.status(404).send({
+                    error: "Error group not found"
+                });
+            }
+
+            const updatedGroup = await prisma.errorGroup.update({
+                where: {
+                    id: group.id
+                },
+                data: {
+                    status
+                },
+                select: {
+                    id: true,
+                    status: true,
+                    updatedAt: true
+                }
+            });
+
+            return reply.status(200).send({
+                group: updatedGroup
+            });
+        }
+    );
+
 
 
 

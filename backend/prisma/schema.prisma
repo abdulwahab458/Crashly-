@@ -62,6 +62,7 @@ model ErrorGroup {
   occurrenceCount Int      @default(0)
   firstSeenAt     DateTime @default(now())
   lastSeenAt      DateTime @default(now())
+  status ErrorGroupStatus @default(UNRESOLVED)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -73,3 +74,11 @@ model ErrorGroup {
 
   @@index([projectId])
 }
+
+
+
+enum ErrorGroupStatus {
+  UNRESOLVED
+  RESOLVED
+}
+

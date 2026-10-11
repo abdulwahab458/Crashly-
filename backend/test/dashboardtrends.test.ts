@@ -243,99 +243,99 @@ describe("GET /api/dashboard/trends", () => {
         });
     });
 
-    
-it("returns trends only for the authenticated project", async () => {
-    const projectA = await prisma.project.create({
-        data: {
-            name: "Trends Project A"
-        }
-    });
 
-    const projectB = await prisma.project.create({
-        data: {
-            name: "Trends Project B"
-        }
-    });
-
-    const keyPrefix = `etrk_live_trendsisolation${projectA.id.replaceAll("-", "")}`;
-    const apiKey = `${keyPrefix}_test`;
-    const keyHash = await bcrypt.hash(apiKey, 4);
-
-    await prisma.apiKey.create({
-        data: {
-            keyPrefix,
-            keyHash,
-            projectId: projectA.id
-        }
-    });
-
-    const groupA = await prisma.errorGroup.create({
-        data: {
-            fingerprint: `trends-isolation-a-${Date.now()}`,
-            message: "Project A error",
-            name: "Error",
-            projectId: projectA.id
-        }
-    });
-
-    const groupB = await prisma.errorGroup.create({
-        data: {
-            fingerprint: `trends-isolation-b-${Date.now()}`,
-            message: "Project B error",
-            name: "Error",
-            projectId: projectB.id
-        }
-    });
-
-    const now = new Date();
-    const currentHour = new Date(now);
-    currentHour.setUTCMinutes(0, 0, 0);
-
-    await prisma.errorEvent.createMany({
-        data: [
-            {
-                name: "Error",
-                message: "Project A event",
-                projectId: projectA.id,
-                groupId: groupA.id,
-                timestamp: new Date(currentHour.getTime() + 1000)
-            },
-            {
-                name: "Error",
-                message: "Project B event",
-                projectId: projectB.id,
-                groupId: groupB.id,
-                timestamp: new Date(currentHour.getTime() + 2000)
+    it("returns trends only for the authenticated project", async () => {
+        const projectA = await prisma.project.create({
+            data: {
+                name: "Trends Project A"
             }
-        ]
-    });
+        });
 
-    const response = await app.inject({
-        method: "GET",
-        url: "/api/dashboard/trends?range=24h",
-        headers: {
-            "x-api-key": apiKey
-        }
-    });
-
-    expect(response.statusCode).toBe(200);
-
-    const body = response.json();
-    const totalEvents = body.data.reduce(
-        (sum: number, bucket: { count: number }) => sum + bucket.count,
-        0
-    );
-
-    expect(totalEvents).toBe(1);
-
-    await prisma.project.deleteMany({
-        where: {
-            id: {
-                in: [projectA.id, projectB.id]
+        const projectB = await prisma.project.create({
+            data: {
+                name: "Trends Project B"
             }
-        }
+        });
+
+        const keyPrefix = `etrk_live_trendsisolation${projectA.id.replaceAll("-", "")}`;
+        const apiKey = `${keyPrefix}_test`;
+        const keyHash = await bcrypt.hash(apiKey, 4);
+
+        await prisma.apiKey.create({
+            data: {
+                keyPrefix,
+                keyHash,
+                projectId: projectA.id
+            }
+        });
+
+        const groupA = await prisma.errorGroup.create({
+            data: {
+                fingerprint: `trends-isolation-a-${Date.now()}`,
+                message: "Project A error",
+                name: "Error",
+                projectId: projectA.id
+            }
+        });
+
+        const groupB = await prisma.errorGroup.create({
+            data: {
+                fingerprint: `trends-isolation-b-${Date.now()}`,
+                message: "Project B error",
+                name: "Error",
+                projectId: projectB.id
+            }
+        });
+
+        const now = new Date();
+        const currentHour = new Date(now);
+        currentHour.setUTCMinutes(0, 0, 0);
+
+        await prisma.errorEvent.createMany({
+            data: [
+                {
+                    name: "Error",
+                    message: "Project A event",
+                    projectId: projectA.id,
+                    groupId: groupA.id,
+                    timestamp: new Date(currentHour.getTime() + 1000)
+                },
+                {
+                    name: "Error",
+                    message: "Project B event",
+                    projectId: projectB.id,
+                    groupId: groupB.id,
+                    timestamp: new Date(currentHour.getTime() + 2000)
+                }
+            ]
+        });
+
+        const response = await app.inject({
+            method: "GET",
+            url: "/api/dashboard/trends?range=24h",
+            headers: {
+                "x-api-key": apiKey
+            }
+        });
+
+        expect(response.statusCode).toBe(200);
+
+        const body = response.json();
+        const totalEvents = body.data.reduce(
+            (sum: number, bucket: { count: number }) => sum + bucket.count,
+            0
+        );
+
+        expect(totalEvents).toBe(1);
+
+        await prisma.project.deleteMany({
+            where: {
+                id: {
+                    in: [projectA.id, projectB.id]
+                }
+            }
+        });
     });
-});
 
 
 
