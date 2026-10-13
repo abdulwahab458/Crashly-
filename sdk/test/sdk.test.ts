@@ -77,38 +77,88 @@ describe("ErrorTracker", () => {
   });
 
   it("sends an error event through HTTP", async () => {
-  const fetchMock = vi.fn().mockResolvedValue(
-    new Response(null, { status: 202 })
-  );
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(null, { status: 202 })
+    );
 
-  vi.stubGlobal("fetch", fetchMock);
+    vi.stubGlobal("fetch", fetchMock);
 
-  const transport = new HttpTransport(
-    "http://localhost:3000/api/events",
-    "test-api-key"
-  );
+    const transport = new HttpTransport(
+      "http://localhost:3000/api/events",
+      "test-api-key"
+    );
 
-  const event = {
-    message: "Database connection failed",
-    name: "Error",
-    stack: "Error: Database connection failed",
-    timestamp: new Date().toISOString()
-  };
+    const event = {
+      message: "Database connection failed",
+      name: "Error",
+      stack: "Error: Database connection failed",
+      timestamp: new Date().toISOString()
+    };
 
-  await transport.send(event);
+    await transport.send(event);
 
-  expect(fetchMock).toHaveBeenCalledWith(
-    "http://localhost:3000/api/events",
-    {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "X-API-Key": "test-api-key"
-      },
-      body: JSON.stringify(event)
-    }
-  );
+    expect(fetchMock).toHaveBeenCalledWith(
+      "http://localhost:3000/api/events",
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "X-API-Key": "test-api-key"
+        },
+        body: JSON.stringify(event)
+      }
+    );
 
-  vi.unstubAllGlobals();
-});
+    vi.unstubAllGlobals();
+  });
+
+  it("does not throw when HTTP transport fails", async () => {
+    const tracker = new ErrorTracker({
+      apiKey: "test-api-key",
+      endpoint: "http://localhost:9999/api/events"
+    });
+
+    const error = new Error("Database connection failed");
+
+    expect(() => tracker.captureException(error)).not.toThrow();
+  });
+
+  it("handles an HTTP error response", async () => {
+    const transport = new HttpTransport(
+      "http://localhost:3000/api/events",
+      "test-api-key"
+    );
+
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue({
+      ok: false,
+      status: 500
+    }));
+
+    const event = {
+      message: "Database connection failed",
+      name: "Error",
+      stack: "Error: Database connection failed",
+      timestamp: new Date().toISOString()
+    };
+
+    await expect(transport.send(event)).resolves.toBeUndefined();
+
+    vi.unstubAllGlobals();
+  });
+  it("handles transport failures", () => {
+    const transport: Transport = {
+      async send() {
+        throw new Error("Transport failed");
+      }
+    };
+
+    const tracker = new ErrorTracker({
+      apiKey: "test-api-key",
+      transport
+    });
+
+    expect(() => {
+      tracker.captureException(new Error("Database connection failed"));
+    }).not.toThrow();
+  });
 });

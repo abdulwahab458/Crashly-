@@ -18,7 +18,8 @@ export class HttpTransport implements Transport {
     ) { }
 
     async send(event: ErrorEvent): Promise<void> {
-        await fetch(this.endpoint, {
+    try {
+        const response = await fetch(this.endpoint, {
             method: "POST",
             headers: {
                 "Content-Type": "application/json",
@@ -26,5 +27,10 @@ export class HttpTransport implements Transport {
             },
             body: JSON.stringify(event)
         });
+         if (!response.ok) {
+            return;
+        }
+    } catch {
     }
+}
 }

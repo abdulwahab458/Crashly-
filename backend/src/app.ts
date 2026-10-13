@@ -247,6 +247,57 @@ export function buildApp() {
     });
 
 
+    app.delete<{
+        Params: {
+            groupId: string;
+        };
+    }>("/api/error-groups/:groupId", async (request, reply) => {
+        const apiKey = request.headers["x-api-key"];
+
+        if (typeof apiKey !== "string") {
+            return reply.status(401).send({
+                error: "Unauthorized"
+            });
+        }
+
+        const project = await authenticateApiKey(apiKey);
+
+        if (!project) {
+            return reply.status(401).send({
+                error: "Unauthorized"
+            });
+        }
+
+        const { groupId } = request.params;
+
+        const group = await prisma.errorGroup.findFirst({
+            where: {
+                id: groupId,
+                projectId: project.id
+            },
+            select: {
+                id: true
+            }
+        });
+
+        if (!group) {
+            return reply.status(404).send({
+                error: "Error group not found"
+            });
+        }
+
+        await prisma.errorGroup.delete({
+            where: {
+                id: group.id
+            }
+        });
+
+        return reply.status(200).send({
+            message: "Error group deleted successfully"
+        });
+    });
+
+
 
     app.get<{
         Params: { groupId: string };

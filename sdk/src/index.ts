@@ -24,7 +24,7 @@ export class ErrorTracker {
       timestamp: new Date().toISOString()
     };
 
-    this.transport.send(event);
+    void this.transport.send(event).catch(() => {});
 
     return event;
   }
