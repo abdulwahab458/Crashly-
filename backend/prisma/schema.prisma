@@ -17,10 +17,13 @@ model Project {
   name      String
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+  ownerId   String
 
   apiKeys     ApiKey[]
   events      ErrorEvent[]
   errorGroups ErrorGroup[]
+
+  @@index([ownerId])
 }
 
 model ApiKey {
@@ -47,7 +50,7 @@ model ErrorEvent {
   project   Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
 
   groupId   String
-  group     ErrorGroup @relation(fields: [groupId], references: [id],onDelete: Cascade)
+  group     ErrorGroup @relation(fields: [groupId], references: [id], onDelete: Cascade)
   createdAt DateTime   @default(now())
 
   @@index([projectId, groupId, timestamp])
@@ -59,12 +62,10 @@ model ErrorGroup {
   message     String
   name        String
 
-  occurrenceCount Int      @default(0)
-  firstSeenAt     DateTime @default(now())
-  lastSeenAt      DateTime @default(now())
-  status ErrorGroupStatus @default(UNRESOLVED)
-
-
+  occurrenceCount Int              @default(0)
+  firstSeenAt     DateTime         @default(now())
+  lastSeenAt      DateTime         @default(now())
+  status          ErrorGroupStatus @default(UNRESOLVED)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -77,10 +78,7 @@ model ErrorGroup {
   @@index([projectId])
 }
 
-
-
 enum ErrorGroupStatus {
   UNRESOLVED
   RESOLVED
 }
-

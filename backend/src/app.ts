@@ -3,10 +3,17 @@ import type { ErrorEvent } from "./types.js";
 import { authenticateApiKey } from "./auth.js";
 import { prisma } from "./utils/db.js";
 import { generateFingerprint } from "./utils/fingerprint.js";
+import { clerkPlugin, getAuth } from "@clerk/fastify";
+import cors from '@fastify/cors';
 
-export function buildApp() {
+export async function buildApp() {
     const app = Fastify({
         logger: true
+    });
+
+    await app.register(cors, {
+        origin: "http://localhost:3000",
+        credentials: true
     });
 
     app.get("/health", async () => {
@@ -615,6 +622,91 @@ export function buildApp() {
             });
         }
     );
+
+
+    await app.register(clerkPlugin);
+    app.get("/api/dashboard/me", async (request, reply) => {
+        const { userId } = getAuth(request);
+
+        if (!userId) {
+            return reply.status(401).send({
+                error: "Unauthorized"
+            });
+        }
+
+        return reply.status(200).send({
+            userId
+        });
+    });
+
+    app.post<{
+        Body: {
+            name?: string;
+        };
+    }>("/api/dashboard/projects", async (request, reply) => {
+        const { userId } = getAuth(request);
+
+        if (!userId) {
+            return reply.status(401).send({
+                error: "Unauthorized"
+            });
+        }
+
+        const { name } = request.body ?? {};
+
+        if (typeof name !== "string" || !name.trim()) {
+            return reply.status(400).send({
+                error: "Project name is required"
+            });
+        }
+
+        const project = await prisma.project.create({
+            data: {
+                name: name.trim(),
+                ownerId: userId
+            },
+            select: {
+                id: true,
+                name: true,
+                ownerId: true,
+                createdAt: true
+            }
+        });
+
+        return reply.status(201).send({
+            project
+        });
+    });
+
+
+    app.get("/api/dashboard/projects", async (request, reply) => {
+    const { userId } = getAuth(request);
+
+    if (!userId) {
+        return reply.status(401).send({
+            error: "Unauthorized"
+        });
+    }
+
+    const projects = await prisma.project.findMany({
+        where: {
+            ownerId: userId
+        },
+        select: {
+            id: true,
+            name: true,
+            createdAt: true,
+            updatedAt: true
+        },
+        orderBy: {
+            createdAt: "desc"
+        }
+    });
+
+    return reply.status(200).send({
+        projects
+    });
+});
 
 
 
