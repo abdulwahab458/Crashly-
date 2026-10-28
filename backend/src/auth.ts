@@ -12,7 +12,8 @@ export async function authenticateApiKey(apiKey: string) {
 
     const key = await prisma.apiKey.findUnique({
         where: {
-            keyPrefix
+            keyPrefix,
+            revokedAt:null
         },
         include: {
             project: true

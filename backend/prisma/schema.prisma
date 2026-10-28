@@ -32,6 +32,7 @@ model ApiKey {
   keyHash   String   @unique
   projectId String
   createdAt DateTime @default(now())
+  revokedAt DateTime?
 
   project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
 
