@@ -1,10 +1,13 @@
-import { describe, it, expect, afterAll } from "vitest";
+import { describe, it, expect, afterAll , beforeAll } from "vitest";
 import { buildApp } from "../src/app.js";
 import { prisma } from "../src/utils/db.js";
 import bcrypt from "bcrypt";
 
 describe("DELETE /api/error-groups/:groupId", () => {
-    const app = buildApp();
+    let app: any;
+    beforeAll(async () => {
+        app = await buildApp();
+    });
 
     afterAll(async () => {
         await app.close();
@@ -13,6 +16,7 @@ describe("DELETE /api/error-groups/:groupId", () => {
     it("deletes an error group and its associated events", async () => {
         const project = await prisma.project.create({
             data: {
+                ownerId: "test_owner",
                 name: "Error Group Delete Test"
             }
         });
@@ -94,6 +98,7 @@ describe("DELETE /api/error-groups/:groupId", () => {
     it("returns 404 when the error group does not exist", async () => {
         const project = await prisma.project.create({
             data: {
+                ownerId: "test_owner",
                 name: "Delete Missing Group Test"
             }
         });
@@ -133,12 +138,14 @@ describe("DELETE /api/error-groups/:groupId", () => {
     it("prevents deleting an error group belonging to another project", async () => {
         const projectA = await prisma.project.create({
             data: {
+                ownerId: "test_owner",
                 name: "Delete Isolation Project A"
             }
         });
 
         const projectB = await prisma.project.create({
             data: {
+                ownerId: "test_owner",
                 name: "Delete Isolation Project B"
             }
         });

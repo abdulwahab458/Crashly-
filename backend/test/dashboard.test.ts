@@ -1,15 +1,19 @@
 
-import { describe, it, expect, afterAll } from "vitest";
+import { describe, it, expect, afterAll , beforeAll } from "vitest";
 import { buildApp } from "../src/app.js";
 import { prisma } from "../src/utils/db.js";
 import bcrypt from "bcrypt";
 
 describe("GET /api/dashboard/summary", () => {
-    const app = buildApp();
+    let app: any;
+    beforeAll(async () => {
+        app = await buildApp();
+    });
 
     it("returns dashboard metrics for the authenticated project", async () => {
         const project = await prisma.project.create({
             data: {
+                ownerId: "test_owner",
                 name: "Dashboard Test Project"
             }
         });
@@ -108,12 +112,14 @@ describe("GET /api/dashboard/summary", () => {
     it("returns metrics only for the authenticated project", async () => {
         const projectA = await prisma.project.create({
             data: {
+                ownerId: "test_owner",
                 name: "Dashboard Project A"
             }
         });
 
         const projectB = await prisma.project.create({
             data: {
+                ownerId: "test_owner",
                 name: "Dashboard Project B"
             }
         });
@@ -196,6 +202,7 @@ describe("GET /api/dashboard/summary", () => {
     it("counts only events from the last 24 hours", async () => {
         const project = await prisma.project.create({
             data: {
+                ownerId: "test_owner",
                 name: "Dashboard Time Test"
             }
         });

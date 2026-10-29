@@ -1,12 +1,15 @@
 
-import { describe, it, expect, afterAll } from "vitest";
+import { describe, it, expect, afterAll , beforeAll } from "vitest";
 import { buildApp } from "../src/app.js";
 import { prisma } from "../src/utils/db.js";
 import { generateFingerprint } from "../src/utils/fingerprint.js";
 import bcrypt from "bcrypt";
 
 describe("PATCH /api/error-groups/:groupId/status", () => {
-    const app = buildApp();
+    let app: any;
+    beforeAll(async () => {
+        app = await buildApp();
+    });
 
     afterAll(async () => {
         await app.close();
@@ -15,6 +18,7 @@ describe("PATCH /api/error-groups/:groupId/status", () => {
     it("marks an error group as resolved", async () => {
         const project = await prisma.project.create({
             data: {
+                ownerId: "test_owner",
                 name: "Error Group Status Test"
             }
         });
@@ -65,7 +69,9 @@ describe("PATCH /api/error-groups/:groupId/status", () => {
     });
     it("reopens a resolved error group when the same error occurs again", async () => {
         const project = await prisma.project.create({
-            data: { name: "Reopen Error Test" }
+            data: {
+                ownerId: "test_owner",
+                name: "Reopen Error Test" }
         });
 
         const keyPrefix = `etrk_live_reopen${project.id.replaceAll("-", "")}`;
@@ -129,7 +135,9 @@ describe("PATCH /api/error-groups/:groupId/status", () => {
 
     it("keeps an unresolved error group unresolved when the same error occurs again", async () => {
         const project = await prisma.project.create({
-            data: { name: "Unresolved Error Test" }
+            data: {
+                ownerId: "test_owner",
+                name: "Unresolved Error Test" }
         });
 
         const keyPrefix = `etrk_live_unresolved${project.id.replaceAll("-", "")}`;

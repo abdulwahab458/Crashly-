@@ -1,15 +1,19 @@
 
-import { describe, it, expect, afterAll } from "vitest";
+import { describe, it, expect, afterAll , beforeAll } from "vitest";
 import { buildApp } from "../src/app.js";
 import { prisma } from "../src/utils/db.js";
 import bcrypt from "bcrypt";
 
 describe("GET /api/dashboard/trends", () => {
-    const app = buildApp();
+    let app: any;
+    beforeAll(async () => {
+        app = await buildApp();
+    });
 
     it("returns 24 hourly buckets for the last 24 hours", async () => {
         const project = await prisma.project.create({
             data: {
+                ownerId: "test_owner",
                 name: "Trends Test Project"
             }
         });
@@ -57,6 +61,7 @@ describe("GET /api/dashboard/trends", () => {
     it("counts events in the correct hourly buckets", async () => {
         const project = await prisma.project.create({
             data: {
+                ownerId: "test_owner",
                 name: "Trends Count Test"
             }
         });
@@ -131,6 +136,7 @@ describe("GET /api/dashboard/trends", () => {
     it("returns 7 daily buckets for the last 7 days", async () => {
         const project = await prisma.project.create({
             data: {
+                ownerId: "test_owner",
                 name: "Trends Weekly Test"
             }
         });
@@ -179,6 +185,7 @@ describe("GET /api/dashboard/trends", () => {
     it("rejects an invalid range", async () => {
         const project = await prisma.project.create({
             data: {
+                ownerId: "test_owner",
                 name: "Trends Invalid Range Test"
             }
         });
@@ -247,12 +254,14 @@ describe("GET /api/dashboard/trends", () => {
     it("returns trends only for the authenticated project", async () => {
         const projectA = await prisma.project.create({
             data: {
+                ownerId: "test_owner",
                 name: "Trends Project A"
             }
         });
 
         const projectB = await prisma.project.create({
             data: {
+                ownerId: "test_owner",
                 name: "Trends Project B"
             }
         });

@@ -1,16 +1,22 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, beforeAll, afterAll } from "vitest";
 import { buildApp } from "../src/app.js";
 import { prisma } from "../src/utils/db.js";
 import bcrypt from "bcrypt";
 
 describe("GET /api/error-groups", () => {
 
-    const app = buildApp();
+    let app: any;
+    beforeAll(async () => {
+        app = await buildApp();
+    });
+    afterAll(async () => {
+        await app?.close();
+    });
 
     it("searches error groups by name or message", async () => {
-        const app = buildApp();
         const project = await prisma.project.create({
             data: {
+                ownerId: "test_owner",
                 name: "Error Group Search Test"
             }
         });
@@ -84,16 +90,15 @@ describe("GET /api/error-groups", () => {
                 id: project.id
             }
         });
-        await app.close();
     });
 
     it("paginates events within an error group", async () => {
         const testStart = Date.now();
-        const app = buildApp();
         console.log("Build app:", Date.now() - testStart, "ms");
         const setupStart = Date.now();
         const project = await prisma.project.create({
             data: {
+                ownerId: "test_owner",
                 name: "Event Pagination Test"
             }
         });
@@ -167,8 +172,6 @@ describe("GET /api/error-groups", () => {
             }
         });
 
-        await app.close();
-
         console.log("Cleanup time:", Date.now() - cleanupStart, "ms");
     });
 
@@ -176,7 +179,9 @@ describe("GET /api/error-groups", () => {
     it("searches error groups by name", async () => {
 
         const project = await prisma.project.create({
-            data: { name: "Error Search Test" }
+            data: {
+                ownerId: "test_owner",
+                name: "Error Search Test" }
         });
 
         const keyPrefix = `etrk_live_search${project.id.replaceAll("-", "")}`;
@@ -224,7 +229,9 @@ describe("GET /api/error-groups", () => {
 
     it("combines search with status filtering", async () => {
         const project = await prisma.project.create({
-            data: { name: "Search Status Test" }
+            data: {
+                ownerId: "test_owner",
+                name: "Search Status Test" }
         });
 
         const keyPrefix = `etrk_live_searchstatus${project.id.replaceAll("-", "")}`;
@@ -285,7 +292,9 @@ describe("GET /api/error-groups", () => {
 
     it("paginates search results correctly", async () => {
         const project = await prisma.project.create({
-            data: { name: "Search Pagination Test" }
+            data: {
+                ownerId: "test_owner",
+                name: "Search Pagination Test" }
         });
 
         const keyPrefix = `etrk_live_searchpage${project.id.replaceAll("-", "")}`;

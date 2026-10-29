@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it , beforeAll } from "vitest";
 import { buildApp } from "../src/app.js";
 import { prisma } from "../src/utils/db.js";
 import bcrypt from "bcrypt";
@@ -229,7 +229,7 @@ describe("POST /api/events", () => {
     // });
 
     //     it("creates different error groups for different errors", async () => {
-    //     const app = buildApp();
+    //         const app = buildApp();
 
     //     const project = await prisma.project.create({
     //         data: {
@@ -325,10 +325,11 @@ describe("POST /api/events", () => {
     // });
 
     it("handles concurrent identical errors safely", async () => {
-        const app = buildApp();
+        const app = await buildApp();
 
         const project = await prisma.project.create({
             data: {
+                ownerId: "test_owner",
                 name: "Concurrent Grouping Test"
             }
         });

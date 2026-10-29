@@ -1,6 +1,6 @@
 import Fastify from "fastify";
 import type { ErrorEvent } from "./types.js";
-import { authenticateApiKey } from "./auth.js";
+import { authenticateApiKey, authenticateProject } from "./auth.js";
 import { prisma } from "./utils/db.js";
 import { generateFingerprint } from "./utils/fingerprint.js";
 import { clerkPlugin, getAuth } from "@clerk/fastify";
@@ -14,9 +14,13 @@ export async function buildApp() {
     });
 
     await app.register(cors, {
-        origin: "http://localhost:3000",
-        credentials: true
-    });
+    origin: "http://localhost:3000",
+    credentials: true,
+    methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization"]
+});
+
+    await app.register(clerkPlugin);
 
     app.get("/health", async () => {
         return {
@@ -142,15 +146,7 @@ export async function buildApp() {
     });
 
     app.get("/api/error-groups", async (request, reply) => {
-        const apiKey = request.headers["x-api-key"];
-
-        if (typeof apiKey !== "string") {
-            return reply.status(401).send({
-                error: "Unauthorized"
-            });
-        }
-
-        const project = await authenticateApiKey(apiKey);
+        const project = await authenticateProject(request);
 
         if (!project) {
             return reply.status(401).send({
@@ -261,15 +257,23 @@ export async function buildApp() {
             groupId: string;
         };
     }>("/api/error-groups/:groupId", async (request, reply) => {
-        const apiKey = request.headers["x-api-key"];
+        let project = await authenticateProject(request);
 
-        if (typeof apiKey !== "string") {
-            return reply.status(401).send({
-                error: "Unauthorized"
-            });
+        if (!project) {
+            try {
+                const { userId } = getAuth(request);
+                if (userId) {
+                    const g = await prisma.errorGroup.findFirst({
+                        where: {
+                            id: request.params.groupId,
+                            project: { ownerId: userId }
+                        },
+                        include: { project: true }
+                    });
+                    if (g) project = g.project;
+                }
+            } catch {}
         }
-
-        const project = await authenticateApiKey(apiKey);
 
         if (!project) {
             return reply.status(401).send({
@@ -322,17 +326,25 @@ export async function buildApp() {
                 );
             };
 
-            const apiKey = request.headers["x-api-key"];
-
-            if (typeof apiKey !== "string") {
-                return reply.status(401).send({
-                    error: "Unauthorized"
-                });
-            }
-
             let stepStart = performance.now();
 
-            const project = await authenticateApiKey(apiKey);
+            let project = await authenticateProject(request);
+
+            if (!project) {
+                try {
+                    const { userId } = getAuth(request);
+                    if (userId) {
+                        const g = await prisma.errorGroup.findFirst({
+                            where: {
+                                id: request.params.groupId,
+                                project: { ownerId: userId }
+                            },
+                            include: { project: true }
+                        });
+                        if (g) project = g.project;
+                    }
+                } catch {}
+            }
 
             logTime("Authentication", stepStart);
 
@@ -418,15 +430,7 @@ export async function buildApp() {
     app.get(
         "/api/dashboard/summary",
         async (request, reply) => {
-            const apiKey = request.headers["x-api-key"];
-
-            if (typeof apiKey !== "string") {
-                return reply.status(401).send({
-                    error: "Unauthorized"
-                });
-            }
-
-            const project = await authenticateApiKey(apiKey);
+            const project = await authenticateProject(request);
 
             if (!project) {
                 return reply.status(401).send({
@@ -479,15 +483,7 @@ export async function buildApp() {
     }>(
         "/api/dashboard/trends",
         async (request, reply) => {
-            const apiKey = request.headers["x-api-key"];
-
-            if (typeof apiKey !== "string") {
-                return reply.status(401).send({
-                    error: "Unauthorized"
-                });
-            }
-
-            const project = await authenticateApiKey(apiKey);
+            const project = await authenticateProject(request);
 
             if (!project) {
                 return reply.status(401).send({
@@ -564,15 +560,23 @@ export async function buildApp() {
     }>(
         "/api/error-groups/:groupId/status",
         async (request, reply) => {
-            const apiKey = request.headers["x-api-key"];
+            let project = await authenticateProject(request);
 
-            if (typeof apiKey !== "string") {
-                return reply.status(401).send({
-                    error: "Unauthorized"
-                });
+            if (!project) {
+                try {
+                    const { userId } = getAuth(request);
+                    if (userId) {
+                        const g = await prisma.errorGroup.findFirst({
+                            where: {
+                                id: request.params.groupId,
+                                project: { ownerId: userId }
+                            },
+                            include: { project: true }
+                        });
+                        if (g) project = g.project;
+                    }
+                } catch {}
             }
-
-            const project = await authenticateApiKey(apiKey);
 
             if (!project) {
                 return reply.status(401).send({
@@ -626,7 +630,6 @@ export async function buildApp() {
     );
 
 
-    await app.register(clerkPlugin);
     app.get("/api/dashboard/me", async (request, reply) => {
         const { userId } = getAuth(request);
 
@@ -803,7 +806,8 @@ export async function buildApp() {
             select: {
                 id: true,
                 keyPrefix: true,
-                createdAt: true
+                createdAt: true,
+                revokedAt: true
             },
             orderBy: {
                 createdAt: "desc"
