@@ -5,10 +5,14 @@ const tracker = new ErrorTracker({
   endpoint: "http://localhost:3001/api/events"
 });
 
-tracker.captureException(
-  new Error("Crashly SDK integration test")
-);
+tracker.init();
 
-setTimeout(() => {
-  console.log("Test event sent.");
-}, 1000);
+async function fetchUser() {
+  const response = await fetch("http://localhost:9999/api/users");
+
+  return response.json();
+}
+
+console.log("Application started");
+
+fetchUser();

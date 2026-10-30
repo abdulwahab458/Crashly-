@@ -7,14 +7,14 @@ export class ErrorTracker {
   private readonly transport: Transport;
 
   constructor(config: ErrorTrackerConfig) {
-  this.apiKey = config.apiKey;
+    this.apiKey = config.apiKey;
 
-  this.transport =
-    config.transport ??
-    (config.endpoint
-      ? new HttpTransport(config.endpoint, config.apiKey)
-      : new ConsoleTransport());
-}
+    this.transport =
+      config.transport ??
+      (config.endpoint
+        ? new HttpTransport(config.endpoint, config.apiKey)
+        : new ConsoleTransport());
+  }
 
   captureException(error: Error): ErrorEvent {
     const event: ErrorEvent = {
@@ -24,13 +24,21 @@ export class ErrorTracker {
       timestamp: new Date().toISOString()
     };
 
-    void this.transport.send(event).catch(() => {});
+    void this.transport.send(event).catch(() => { });
 
     return event;
   }
 
   init(): void {
     process.on("uncaughtException", (error) => {
+      this.captureException(error);
+    });
+    process.on("unhandledRejection", (reason) => {
+      const error =
+        reason instanceof Error
+          ? reason
+          : new Error(String(reason));
+
       this.captureException(error);
     });
   }

@@ -161,4 +161,36 @@ describe("ErrorTracker", () => {
       tracker.captureException(new Error("Database connection failed"));
     }).not.toThrow();
   });
+
+
+
+  it("captures an unhandled promise rejection", () => {
+    const tracker = new ErrorTracker({
+      apiKey: "test-api-key"
+    });
+
+    const captureSpy = vi.spyOn(tracker, "captureException");
+
+    const previousListeners = process.listeners("unhandledRejection");
+
+    tracker.init();
+
+    const listener = process.listeners("unhandledRejection").find(
+      (item) => !previousListeners.includes(item)
+    );
+
+    expect(listener).toBeDefined();
+
+    const error = new Error("Database connection failed");
+
+    listener!(error, Promise.reject(error));
+
+    expect(captureSpy).toHaveBeenCalledWith(error);
+
+    process.off("unhandledRejection", listener!);
+
+    captureSpy.mockRestore();
+  });
+
 });
+
