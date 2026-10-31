@@ -1,5 +1,5 @@
 {
-  "name": "sdk",
+  "name": "crashly",
   "version": "1.0.0",
   "description": "Crashly error tracking SDK",
   "main": "dist/index.js",
@@ -7,8 +7,18 @@
   "files": [
     "dist"
   ],
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./browser": {
+      "types": "./dist/browser.d.ts",
+      "import": "./dist/browser.js"
+    }
+  },
   "scripts": {
-    "build": "tsc",
+    "build": "tsup && tsc --emitDeclarationOnly",
     "test": "vitest"
   },
   "keywords": [
@@ -16,9 +26,13 @@
     "crashly"
   ],
   "license": "ISC",
-  "type": "commonjs",
+  "type": "module",
   "devDependencies": {
+    "@types/express": "^5.0.6",
     "@types/node": "^26.6.4",
+    "express": "^5.3.0",
+    "fastify": "^5.12.7",
+    "tsup": "^9.0.0",
     "typescript": "^7.0.2",
     "vitest": "^5.0.3"
   }

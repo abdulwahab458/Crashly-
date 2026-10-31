@@ -1,6 +1,11 @@
 import type { ErrorTrackerConfig } from "./config.js";
 import type { ErrorEvent } from "./types.js";
 import { ConsoleTransport, HttpTransport, type Transport } from "./transport.js";
+import type { ErrorRequestHandler } from "express";
+import { createExpressErrorHandler } from "./integrations/express.js";
+import type { FastifyInstance } from "fastify";
+import { registerFastifyErrorHandler } from "./integrations/fastify.js";
+
 
 export class ErrorTracker {
   private readonly apiKey: string;
@@ -42,4 +47,13 @@ export class ErrorTracker {
       this.captureException(error);
     });
   }
+
+  expressErrorHandler(): ErrorRequestHandler {
+    return createExpressErrorHandler(this);
+  }
+
+  fastify(fastify: FastifyInstance): void {
+    registerFastifyErrorHandler(fastify, this);
+  }
+
 }

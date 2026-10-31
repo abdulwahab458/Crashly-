@@ -1,4 +1,7 @@
-const { ErrorTracker } = require("sdk");
+const Fastify = require("fastify");
+const { ErrorTracker } = require("crashly");
+
+const app = Fastify();
 
 const tracker = new ErrorTracker({
   apiKey: "etrk_live_a8b4b0a219ac_9c3486dbca3fb2cfd9a891940890aab8cfb7ea12f62b6c7a",
@@ -7,12 +10,17 @@ const tracker = new ErrorTracker({
 
 tracker.init();
 
-async function fetchUser() {
-  const response = await fetch("http://localhost:9999/api/users");
+app.get("/test-error", async (request, reply) => {
+  throw new Error("Crashly Fastify integration test");
+});
 
-  return response.json();
-}
+app.get("/ok", async (request, reply) => {
+  return { message: "OK" };
+});
 
-console.log("Application started");
+tracker.fastify(app);
 
-fetchUser();
+app.listen({ port: 4000 }, (err, address) => {
+  if (err) throw err;
+  console.log(`Application running at ${address}`);
+});

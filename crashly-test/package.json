@@ -11,6 +11,11 @@
   "license": "ISC",
   "type": "commonjs",
   "dependencies": {
-    "sdk": "file:../sdk"
+    "crashly": "file:../sdk",
+    "fastify": "^5.12.7"
+  },
+  "devDependencies": {
+    "@types/express": "^5.0.6",
+    "express": "^5.3.0"
   }
 }
