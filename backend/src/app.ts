@@ -14,11 +14,18 @@ export async function buildApp() {
     });
 
     await app.register(cors, {
-    origin: "http://localhost:3000",
-    credentials: true,
-    methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
-    allowedHeaders: ["Content-Type", "Authorization"]
-});
+        origin: [
+            "http://localhost:3000",
+            "http://localhost:5173"
+        ],
+        credentials: true,
+        methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+        allowedHeaders: [
+            "Content-Type",
+            "Authorization",
+            "X-API-Key"
+        ]
+    });
 
     await app.register(clerkPlugin);
 
@@ -272,7 +279,7 @@ export async function buildApp() {
                     });
                     if (g) project = g.project;
                 }
-            } catch {}
+            } catch { }
         }
 
         if (!project) {
@@ -343,7 +350,7 @@ export async function buildApp() {
                         });
                         if (g) project = g.project;
                     }
-                } catch {}
+                } catch { }
             }
 
             logTime("Authentication", stepStart);
@@ -575,7 +582,7 @@ export async function buildApp() {
                         });
                         if (g) project = g.project;
                     }
-                } catch {}
+                } catch { }
             }
 
             if (!project) {
