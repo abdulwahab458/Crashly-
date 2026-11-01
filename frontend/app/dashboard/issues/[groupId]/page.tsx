@@ -163,7 +163,9 @@ function ErrorGroupDetailContent() {
                 `/error-groups/${group.id}${projectQuery}`,
                 token,
                 {
-                    method: "DELETE"
+                    method: "DELETE",
+                    body: JSON.stringify({})
+                    
                 }
             );
 

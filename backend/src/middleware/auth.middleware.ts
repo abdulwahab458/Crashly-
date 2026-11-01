@@ -1,5 +1,5 @@
 import bcrypt from "bcrypt";
-import { prisma } from "./utils/db.js";
+import { prisma } from "../utils/db.js";
 import { getAuth } from "@clerk/fastify";
 import type { FastifyRequest } from "fastify";
 
