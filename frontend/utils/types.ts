@@ -8,6 +8,13 @@ export interface Project {
     ownerId?: string;
 }
 
+export interface AllowedOrigin {
+    id: string;
+    origin: string;
+    projectId: string;
+    createdAt: string;
+}
+
 export interface ApiKey {
     id: string;
     keyPrefix: string;

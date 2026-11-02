@@ -6,6 +6,7 @@ import { registerErrorGroupRoutes, registerErrorGroupStatusRoute } from "./modul
 import { registerProjectRoutes } from "./modules/projects/project.routes.js";
 import { registerApiKeyRoutes } from "./modules/api-keys/api-key.routes.js";
 import { registerDashboardRoutes, registerCurrentUserRoute } from "./modules/dashboard/dashboard.routes.js";
+import { registerAllowedOriginRoutes } from "./modules/allowed-origins/allowed-origin.routes.js";
 
 export async function buildApp() {
     const app = Fastify({
@@ -28,6 +29,7 @@ export async function buildApp() {
     await registerCurrentUserRoute(app);
     await registerProjectRoutes(app);
     await registerApiKeyRoutes(app);
+    await registerAllowedOriginRoutes(app);
 
     return app;
 }

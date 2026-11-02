@@ -7,6 +7,7 @@ import { useProject } from "@/context/ProjectContext";
 import { apiRequest } from "@/utils/api";
 import type { DashboardSummary, ErrorGroup } from "@/utils/types";
 import { OverviewTrendsChart } from "@/components/OverviewTrendsChart";
+import { AllowedOriginsSection } from "@/components/AllowedOriginsSection";
 import {
     AlertOctagon,
     Layers,
@@ -179,6 +180,10 @@ export default function DashboardOverviewPage() {
                         Retry
                     </button>
                 </div>
+            )}
+
+            {selectedProjectId && (
+                <AllowedOriginsSection projectId={selectedProjectId} />
             )}
 
             {/* Metric Summary Cards */}
